@@ -1,6 +1,7 @@
 Load Libraries
 ```{r}
 library(tidyverse) # contains ggplot2, dplyr, tidyr, readr, purr, tibble, stringr, forcats, lubridate
+library(MASS)
 ```
 Read the data 
 ```{r}
@@ -101,6 +102,8 @@ house_all %>% group_by(zipcode) %>%
 ```
     View a boxplot of house price by states
 ```{r}
+boxplot(house_all$rent)
+boxplot(house_all$price)
 boxplot(price ~ state, data = house_all)
 boxplot(price ~ state, data = (house_all %>% filter(state=='NY' | state=='NJ' | state=='CT' | state=='PA')))
 ```
@@ -117,7 +120,7 @@ hist(house_all$rent, xlab = 'Rent (USD)', main = 'Rent Cost Distribution')
   Bivariate analysis
 ```{r}
 ggplot(data = house_all, mapping = aes(x = price, y = rent)) + theme_bw() + 
-  geom_point() + ggtitle("Rent vs. Price") + xlab('Price (USD)') + ylab('Rent (USD)')
+  geom_point() + ggtitle("Rent vs. Price") + xlab('Price (USD)') + ylab('Rent (USD)') + stat_smooth(method = lm, se=FALSE)
 ```
     General linear trend but variance appears to increases with price due to outliers. 
     Maybe HOA fees lowering purchase price but keeping rent high.
@@ -133,10 +136,60 @@ summary(model)
     Rent = (1.514e-03)*Price + 1.023e+03
     R-squared = 0.7118
     All P-values are significantly low so we can reject the null hypothesis
-
+    RSE = $350
+    
   Look at assumptions of linearity
 ```{r}
 plot(model)
 ```
+Some issues with our assumptions to linear regression
+  Data is linear
+  Residual errors are normally distributed
+  Residuals have constant variance (homoscedasticity)
+  Independence 
+
+Applying the Box-Cox Transformation
+```{r}
+bc <- boxcox(rent ~ price, data=house_all)
+lambda <- bc$x[which.max(bc$y)]
+lambda
+# lambda = 0.4646465
+```
+  Fit new linear regression model using the Box-Cox transformation
+```{r}
+model_bc <- lm(((rent^(lambda)-1)/lambda) ~ price, data = house_all)
+summary(model_bc)
+```
+
+Plot the transformed linear regression
+```{r}
+plot(model_bc)
+```
+
+Compare the two linear regressions against our assumptions
+  Check if data is linear using Q-Q plots
+```{r}
+op <- par(pty = "s", mfrow = c(1,2))
+qqnorm(model$residuals)
+qqline(model$residuals)
+qqnorm(model_bc$residuals)
+qqline(model_bc$residuals)
+par(op)
+```
+    The Box-Cox transformation does not appear to have had a significant effect on linearity
+  Residual errors are normally distributed
+  Residuals have constant variance (homoscedasticity)
+  Independence 
+
+
+
+
+First what is going on when rent is over 7,000 USD?
+```{r}
+house_all %>% filter(rent > 7000)
+# All rent over $7000 is from one zipcode!
+```
+
+
 
 
