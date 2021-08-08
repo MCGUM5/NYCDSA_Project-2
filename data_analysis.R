@@ -1,17 +1,22 @@
+Load Libraries
+```{r}
 library(tidyverse) # contains ggplot2, dplyr, tidyr, readr, purr, tibble, stringr, forcats, lubridate
-
-# Read the data 
+```
+Read the data 
+```{r}
 house_values = read.csv('./data/home_values.csv', header=TRUE, sep = ',')
 house_forecasts = read.csv('./data/home_forecasts.csv', header=TRUE, sep = ',')
 rentals = read.csv('./data/rentals.csv', header=TRUE, sep = ',')
-
-# Check the data
+```
+Check the data
+```{r}
 head(house_values)
 head(house_forecasts)
 head(rentals)
-
-# Clean the data
-## Rename columns
+```
+Clean the data
+  Rename columns
+```{r}
 house_values <- house_values %>% 
   rename(rank = SizeRank,
     zipcode = RegionName,
@@ -32,16 +37,20 @@ rentals <- rentals %>%
          zipcode = RegionName,
          city_state = MsaName, 
   )
-## All zip codes are missing leading 0s (where applicable)
+```
+  All zip codes are missing leading 0s (where applicable)
+```{r}
 house_values$zipcode <- sapply(house_values$zipcode, function(x){if(nchar(x)<5){paste0(0,x)}else{x}})
 house_forecasts$zipcode <- sapply(house_forecasts$zipcode, function(x){if(nchar(x)<5){paste0(0,x)}else{x}})
 rentals$zipcode <- sapply(rentals$zipcode, function(x){if(nchar(x)<5){paste0(0,x)}else{x}})
-
-## Reshape the data so date columns are one per row
+```
+  Reshape the data so date columns are one per row
+```{r}
 house_values <- pivot_longer(house_values, cols=10:315, names_to = "date", values_to = "price")
 rentals <- pivot_longer(rentals, cols=5:94, names_to = "date", values_to = "price")
-
-## Make dates readable as dates
+```
+  Make dates readable as dates
+```{r}
 house_values$date <- sub(".", "", house_values$date) # remove the leading "X"
 house_values$date <- as_date(house_values$date)
 house_forecasts$date <- as_date(house_forecasts$date) 
@@ -49,22 +58,85 @@ rentals$date <- sub(".", "", rentals$date) # remove the leading "X"
 rentals$date <- parse_date_time(rentals$date, "ym") # convert to date_time so day value is added
 rentals$date <- as_date(rentals$date) # covert to date to drop time value
 rentals$date <- rentals$date-1 # subtract 1 day so values align with other datasets 
-
-## Remove all house values before 2013-12-31 because we do not have a rent value to associate with
+```
+  Remove all house values before 2013-12-31 because we do not have a rent value to associate with
+```{r}
 house_values_trim <- house_values %>% filter(date > "2013-12-01")
-
-## Combine rentals and home values into one dataframe
+```
+  Combine rentals and home values into one dataframe
+```{r}
 house_all <- house_values_trim %>% full_join(rentals, by = c('zipcode', 'date'), copy = FALSE, suffix = c(".x", ".y"))
 head(house_all)
-
-## Rename the columns after spot checking data
+```
+  Rename the columns after spot checking data
+```{r}
 house_all <- house_all %>% 
   rename(ID = RegionID.x,
          rank = rank.x,
          price = price.x, 
          rent = price.y)
-
-## Drop columns not of interest
+```
+  Drop columns not of interest
+```{r}
 house_all <- select(house_all, -c(RegionType, StateName, RegionID.y, rank.y, city_state))
+```
+  Drop NA values on key columns
+```{r}
+house_all <- house_all %>% drop_na(price, rent, zipcode, date)
+```
+EDA - exploratory data analysis
+  Univariate analysis
+```{r}
+str(house_all)
+summary(house_all)
+```
+    View mean and standard deviations of price & rent at each zipcode
+```{r}
+house_all %>% group_by(zipcode) %>% 
+  summarize(mean_price=mean(price), 
+            sd_price=sd(price), 
+            mean_rent=mean(rent), 
+            sd_rent=sd(rent)
+            )
+```
+    View a boxplot of house price by states
+```{r}
+boxplot(price ~ state, data = house_all)
+boxplot(price ~ state, data = (house_all %>% filter(state=='NY' | state=='NJ' | state=='CT' | state=='PA')))
+```
+    Initial Pearson correlation 
+```{r}
+cor(house_all$price, house_all$rent)
+#### Initial Pearson correlation is 0.8436554 (hints at a significant correlation)
+```
+    View frequency plots
+```{r}
+hist(house_all$price, xlab = 'Price (USD)', main = 'Property Price Distribution')
+hist(house_all$rent, xlab = 'Rent (USD)', main = 'Rent Cost Distribution')
+```
+  Bivariate analysis
+```{r}
+ggplot(data = house_all, mapping = aes(x = price, y = rent)) + theme_bw() + 
+  geom_point() + ggtitle("Rent vs. Price") + xlab('Price (USD)') + ylab('Rent (USD)')
+```
+    General linear trend but variance appears to increases with price due to outliers. 
+    Maybe HOA fees lowering purchase price but keeping rent high.
+
+Linear regression
+  Null Hypothesis: Price has no correlation with Rent.
+
+  Run linear regression and summarize output
+```{r}
+model = lm(rent ~ price, data=house_all)
+summary(model)
+```
+    Rent = (1.514e-03)*Price + 1.023e+03
+    R-squared = 0.7118
+    All P-values are significantly low so we can reject the null hypothesis
+
+  Look at assumptions of linearity
+```{r}
+plot(model)
+```
 
 
