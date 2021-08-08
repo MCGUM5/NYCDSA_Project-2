@@ -53,7 +53,18 @@ rentals$date <- rentals$date-1 # subtract 1 day so values align with other datas
 ## Remove all house values before 2013-12-31 because we do not have a rent value to associate with
 house_values_trim <- house_values %>% filter(date > "2013-12-01")
 
-## Combine to one set of data 
-house_all <- house_values_trim %>% mutate(rent = case_when((house_values_trim$zipcode == rentals$zipcode & 
-                                                              house_values_trim$date == rentals$date) ~ rentals$price)
-  )
+## Combine rentals and home values into one dataframe
+house_all <- house_values_trim %>% full_join(rentals, by = c('zipcode', 'date'), copy = FALSE, suffix = c(".x", ".y"))
+head(house_all)
+
+## Rename the columns after spot checking data
+house_all <- house_all %>% 
+  rename(ID = RegionID.x,
+         rank = rank.x,
+         price = price.x, 
+         rent = price.y)
+
+## Drop columns not of interest
+house_all <- select(house_all, -c(RegionType, StateName, RegionID.y, rank.y, city_state))
+
+
