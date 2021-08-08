@@ -1,3 +1,7 @@
 
 *.csv
+*.rds
 *.log
+*.png
+*.xls
+*.sh
