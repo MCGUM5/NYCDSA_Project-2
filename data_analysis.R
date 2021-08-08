@@ -1,7 +1,8 @@
 Load Libraries
 ```{r}
-library(tidyverse) # contains ggplot2, dplyr, tidyr, readr, purr, tibble, stringr, forcats, lubridate
+library(tidyverse) # contains ggplot2, dplyr, tidyr, readr, purr, tibble, stringr, forcats
 library(MASS)
+library(lubridate)
 ```
 Read the data 
 ```{r}
@@ -79,7 +80,7 @@ house_all <- house_all %>%
 ```
   Drop columns not of interest
 ```{r}
-house_all <- select(house_all, -c(RegionType, StateName, RegionID.y, rank.y, city_state))
+house_all <- house_all %>% select_('ID', 'rank', 'zipcode', 'state', 'city', 'Metro', 'county', 'date', 'price', 'rent')
 ```
   Drop NA values on key columns
 ```{r}
@@ -143,10 +144,10 @@ summary(model)
 plot(model)
 ```
 Some issues with our assumptions to linear regression
-  Data is linear
-  Residual errors are normally distributed
-  Residuals have constant variance (homoscedasticity)
-  Independence 
+  1. Data is linear
+  2. Residual errors are normally distributed
+  3. Residuals have constant variance (homoscedasticity)
+  4. Independence 
 
 Applying the Box-Cox Transformation
 ```{r}
@@ -176,20 +177,55 @@ qqnorm(model_bc$residuals)
 qqline(model_bc$residuals)
 par(op)
 ```
-    The Box-Cox transformation does not appear to have had a significant effect on linearity
-  Residual errors are normally distributed
-  Residuals have constant variance (homoscedasticity)
-  Independence 
+The Box-Cox transformation appears to have had a minimal effect on all assumptions for linear regression. 
+  1. Data is linear (look at Q-Q plot)
+  2. Residual errors are normally distributed (look at residuals vs fitted plot)
+  3. Residuals have constant variance (homoscedasticity)
+  4. Independence 
 
 
-
+Maybe there is another variable influence we are not addressing?
 
 First what is going on when rent is over 7,000 USD?
 ```{r}
 house_all %>% filter(rent > 7000)
 # All rent over $7000 is from one zipcode!
+house_all %>% filter(price > 3500000)
+# All price over 3500000 is from two zipcodes!
 ```
 
+In the context of creating a general equation, remove the two zip codes that are significant outliers 
+```{r}
+house_trim <- house_all %>% filter(zipcode != 90265 & zipcode != 94301)
+```
 
+Check histograms without outliers for normal distribution
+```{r}
+hist(house_trim$price, xlab = 'Price (USD)', main = 'Property Price Distribution')
+hist(house_trim$rent, xlab = 'Rent (USD)', main = 'Rent Cost Distribution')
+```
+Still skewed right so...
+Re-run Box-Cox transformation on trimmed dataset
+```{r}
+bc <- boxcox(rent ~ price, data=house_trim)
+lambda_trim <- bc$x[which.max(bc$y)]
+lambda_trim
+```
+
+Re-run linear regression on trimmed dataset.
+```{r}
+model_trim <- lm(((rent^(lambda_trim)-1)/lambda_trim) ~ price, data = house_trim)
+summary(model_bc)
+```
+
+Plot the linear regression to check assumptions
+```{r}
+plot(model_trim)
+```
+
+Write the dataframe to a csv file for the Shiny app. 
+```{r}
+write.csv(house_trim, "./data/house_trim.csv", row.names = TRUE)
+```
 
 
