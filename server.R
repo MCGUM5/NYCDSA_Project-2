@@ -9,7 +9,7 @@ set.seed(100)
 zipdata <- allzips[sample.int(nrow(allzips), 10000),]
 # By ordering by centile, we ensure that the (comparatively rare) SuperZIPs
 # will be drawn last and thus be easier to see
-zipdata <- zipdata[order(zipdata$centile),]
+zipdata <- zipdata[order(zipdata$revenue),]
 
 function(input, output, session) {
   
@@ -37,28 +37,28 @@ function(input, output, session) {
   })
   
   # Precalculate the breaks we'll need for the two histograms
-  centileBreaks <- hist(plot = FALSE, allzips$centile, breaks = 20)$breaks
+  revenueBreaks <- hist(plot = FALSE, allzips$revenue, breaks = 20)$breaks
   
-  output$histCentile <- renderPlot({
+  output$histRevenue <- renderPlot({
     # If no zipcodes are in view, don't plot
     if (nrow(zipsInBounds()) == 0)
       return(NULL)
     
-    hist(zipsInBounds()$centile,
-         breaks = centileBreaks,
-         main = "SuperZIP score (visible zips)",
-         xlab = "Percentile",
-         xlim = range(allzips$centile),
+    hist(zipsInBounds()$revenue,
+         breaks = revenueBreaks,
+         main = "Profit Score (visible zipcodes)",
+         xlab = "Profit Score",
+         xlim = range(allzips$revenue),
          col = '#00DD00',
          border = 'white')
   })
   
-  output$scatterCollegeIncome <- renderPlot({
+  output$scatterAppreciationYear <- renderPlot({
     # If no zipcodes are in view, don't plot
     if (nrow(zipsInBounds()) == 0)
       return(NULL)
     
-    print(xyplot(income ~ college, data = zipsInBounds(), xlim = range(allzips$college), ylim = range(allzips$income)))
+    print(xyplot(appreciation ~ year, data = zipsInBounds(), xlim = range(allzips$year), ylim = range(allzips$appreciation)))
   })
   
   # This observer is responsible for maintaining the circles and legend,
@@ -66,20 +66,17 @@ function(input, output, session) {
   observe({
     colorBy <- input$color
     sizeBy <- input$size
-    
-    if (colorBy == "superzip") {
-      # Color and palette are treated specially in the "superzip" case, because
-      # the values are categorical instead of continuous.
-      colorData <- ifelse(zipdata$centile >= (100 - input$threshold), "yes", "no")
-      pal <- colorFactor("viridis", colorData)
+
+    if (colorBy == "price") {
+      colorData <- zipdata[[colorBy]]
+      pal <- colorBin("viridis", colorData, 7, pretty = FALSE)
     } else {
       colorData <- zipdata[[colorBy]]
       pal <- colorBin("viridis", colorData, 7, pretty = FALSE)
     }
     
-    if (sizeBy == "superzip") {
-      # Radius is treated specially in the "superzip" case.
-      radius <- ifelse(zipdata$centile >= (100 - input$threshold), 30000, 3000)
+    if (sizeBy == "price") {
+      radius <- zipdata[[sizeBy]] / max(zipdata[[sizeBy]]) * 30000
     } else {
       radius <- zipdata[[sizeBy]] / max(zipdata[[sizeBy]]) * 30000
     }
@@ -96,13 +93,13 @@ function(input, output, session) {
   showZipcodePopup <- function(zipcode, lat, lng) {
     selectedZip <- allzips[allzips$zipcode == zipcode,]
     content <- as.character(tagList(
-      tags$h4("Score:", as.integer(selectedZip$centile)),
+      tags$h4("Profit Ratio:", as.integer(selectedZip$revenue)),
       tags$strong(HTML(sprintf("%s, %s %s",
                                selectedZip$city.x, selectedZip$state.x, selectedZip$zipcode
       ))), tags$br(),
-      sprintf("Median household income: %s", dollar(selectedZip$income * 1000)), tags$br(),
-      sprintf("Percent of adults with BA: %s%%", as.integer(selectedZip$college)), tags$br(),
-      sprintf("Adult population: %s", selectedZip$adultpop)
+      sprintf("Household price: %s", dollar(selectedZip$price)), tags$br(),
+      sprintf("Yr/yr appreciation: %s%%", as.numeric(selectedZip$appreciation)), tags$br(),
+      sprintf("Household rent: %s", dollar(selectedZip$rent)), tags$br()
     ))
     leafletProxy("map") %>% addPopups(lng, lat, content, layerId = zipcode)
   }

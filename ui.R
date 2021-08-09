@@ -2,21 +2,20 @@ library(leaflet)
 
 # Choices for drop-downs
 vars <- c(
-  "Is SuperZIP?" = "superzip",
-  "Centile score" = "centile",
-  "College education" = "college",
-  "Median income" = "income",
-  "Population" = "adultpop"
+  "Profit Score" = "revenue",
+  "Property value" = "price",
+  "Property rent" = "rent",
+  "Property Appreciation" = "appreciation",
 )
 
 
-navbarPage("Superzip", id="nav",
+navbarPage("Revenue Map", id="nav",
            
            tabPanel("Interactive map",
                     div(class="outer",
                         
                         tags$head(
-                          # Include our custom CSS
+                          # Include custom CSS
                           includeCSS("styles.css"),
                           includeScript("gomap.js")
                         ),
@@ -32,14 +31,14 @@ navbarPage("Superzip", id="nav",
                                       h2("ZIP explorer"),
                                       
                                       selectInput("color", "Color", vars),
-                                      selectInput("size", "Size", vars, selected = "adultpop"),
-                                      conditionalPanel("input.color == 'superzip' || input.size == 'superzip'",
-                                                       # Only prompt for threshold when coloring or sizing by superzip
-                                                       numericInput("threshold", "SuperZIP threshold (top n percentile)", 5)
+                                      selectInput("size", "Size", vars, selected = "price"),
+                                      conditionalPanel("input.color == 'price' || input.size == 'price'",
+                                                       # Only prompt for threshold when coloring or sizing by price
+                                                       numericInput("threshold", "Price threshold (USD)", 3000000)
                                       ),
                                       
-                                      plotOutput("histCentile", height = 200),
-                                      plotOutput("scatterCollegeIncome", height = 250)
+                                      plotOutput("histRevenue", height = 200),
+                                      plotOutput("scatterAppreciationYear", height = 250)
                         ),
                         
                         tags$div(id="cite",
