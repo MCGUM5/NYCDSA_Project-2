@@ -223,9 +223,49 @@ Plot the linear regression to check assumptions
 plot(model_trim)
 ```
 
+Look at profitability for each zipcode
+  Revenue = Appreciation + Rent
+    Assume house and rent expenses are proportional to house price and rent price so they can be ignored when comparing profit.
+  Revenue Ratio = (Appreciation + Rent) / price
+Create new dataframe with profit/revenue
+```{r}
+Homes <- house_trim %>% select_('rank', 'zipcode', 'state', 'city', 'county', 'date', 'price', 'rent')
+Homes <- Homes %>% group_by(zipcode) %>% arrange(date, .by_group = TRUE) %>% 
+  mutate(appreciation = ((price - lag(price))/lag(price))*100)
+Homes <- Homes %>% drop_na(appreciation)
+Homes <- Homes %>% mutate(profit = (((appreciation/100)*price)+rent)/price)
+Homes
+```
+Calculate data by year values
+```{r}
+Homes_yearly = Homes %>% mutate(year = format(date, "%Y")) %>% 
+  group_by(zipcode, year) %>% 
+  summarise(price_year = mean(price), 
+            rent_year = mean(rent), 
+            rev_year = sum(profit), 
+            apprec_year = sum(appreciation)
+            )
+Homes_yearly
+```
+
+
+Look at forecast data to determine price in one year.
+```{r}
+home_forecasts <- house_forecasts %>% filter(Region == 'Zip')
+home_forecasts <- home_forecasts %>% select_('zipcode', 'state', 'county', 'city', 'date', 'appreciation')
+home_forecasts
+```
+
+```{r}
+Z <- Homes_yearly %>% full_join(home_forecasts, by = c('zipcode'), copy = FALSE)
+
+```
+
 Write the dataframe to a csv file for the Shiny app. 
 ```{r}
 write.csv(house_trim, "./data/house_trim.csv", row.names = TRUE)
 ```
+
+
 
 
