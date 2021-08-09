@@ -1,3 +1,7 @@
 *.log
 *.png
 *.xls
+*.DS_Store
+*.history
+*.RData
+*.Rhistory
