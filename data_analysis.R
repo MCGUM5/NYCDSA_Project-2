@@ -253,17 +253,46 @@ Look at forecast data to determine price in one year.
 ```{r}
 home_forecasts <- house_forecasts %>% filter(Region == 'Zip')
 home_forecasts <- home_forecasts %>% select_('zipcode', 'state', 'county', 'city', 'date', 'appreciation')
+home_forecasts <- home_forecasts %>% mutate(year = format(date, "%Y"), apprec_year = appreciation)
+home_forecasts <- home_forecasts %>% select_('zipcode', 'state', 'county', 'city', 'year', 'apprec_year')
 home_forecasts
 ```
-
+Manipulate dataset to get all joined columns populated correctly
 ```{r}
-Z <- Homes_yearly %>% full_join(home_forecasts, by = c('zipcode'), copy = FALSE)
-
+Homes_all <- left_join(Homes_yearly, home_forecasts, by = c('zipcode'), copy = FALSE)
+Homes_all <- Homes_all %>% select_('zipcode', 
+                                   year = 'year.x', 'price_year', 'rent_year', 
+                                   'rev_year', apprec_year = 'apprec_year.x', 
+                                   'state', 'county', 'city'
+                                   )
+Homes_all <- full_join(Homes_all, home_forecasts, 
+                       by = c('zipcode', 'year', 'apprec_year', 'state', 'county', 'city'), 
+                       copy = FALSE
+                       )
+# Remove rows where zip code only shows up once
+Homes_all <- Homes_all %>% group_by(zipcode) %>% arrange(year, .by_group = TRUE)
+Homes_all <- Homes_all %>% group_by(zipcode) %>% filter(n() != 1)
+# Calculate price from previous year and 2022 forecasted appreciation
+Homes_all <- Homes_all %>% mutate(price_yr = case_when(year == 2022 ~ (lag(price_year)+((apprec_year/100)*lag(price_year))), 
+                                                  year != 2022 ~ price_year))
+# Originally used previous linear regression to calculate predicted rent for 2022 but values looked too far off
+# Assume rent for 2022 did not change from previous year (conservative estimate of revenue)
+Homes_all <- Homes_all %>% mutate(rent_yr = case_when(year == 2022 ~ lag(rent_year), 
+                                                      year != 2022 ~ rent_year))
+# Recalculate rev_yr = (appreciation($) + rent) / price
+Homes_all <- Homes_all %>% mutate(rev_yr = ((apprec_year/100)*price_yr+rent_yr))
+# Remove old columns that have been mutated
+Homes_all <- Homes_all %>% select_('zipcode', 'year', 'state', 
+                                   'county', 'city', appreciation = 'apprec_year', 
+                                   price = 'price_yr', rent = 'rent_yr', revenue = 'rev_yr') %>% group_by(zipcode)
+Homes_all
 ```
+
+
 
 Write the dataframe to a csv file for the Shiny app. 
 ```{r}
-write.csv(house_trim, "./data/house_trim.csv", row.names = TRUE)
+write.csv(Homes_all, "./data/Homes_all.csv", row.names = TRUE)
 ```
 
 
