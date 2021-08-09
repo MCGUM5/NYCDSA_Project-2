@@ -6,10 +6,11 @@ vars <- c(
   "Property value" = "price",
   "Property rent" = "rent",
   "Property Appreciation" = "appreciation",
+  "None" = "none"
 )
 
 
-navbarPage("Revenue Map", id="nav",
+navbarPage("Property Investment App", id="nav",
            
            tabPanel("Interactive map",
                     div(class="outer",
@@ -26,19 +27,15 @@ navbarPage("Revenue Map", id="nav",
                         # Shiny versions prior to 0.11 should use class = "modal" instead.
                         absolutePanel(id = "controls", class = "panel panel-default", fixed = TRUE,
                                       draggable = TRUE, top = 60, left = "auto", right = 20, bottom = "auto",
-                                      width = 330, height = "auto",
+                                      width = 400, height = "auto",
                                       
-                                      h2("ZIP explorer"),
+                                      h2("Real Estate Explorer"),
                                       
                                       selectInput("color", "Color", vars),
-                                      selectInput("size", "Size", vars, selected = "price"),
-                                      conditionalPanel("input.color == 'price' || input.size == 'price'",
-                                                       # Only prompt for threshold when coloring or sizing by price
-                                                       numericInput("threshold", "Price threshold (USD)", 3000000)
-                                      ),
+                                      selectInput("size", "Size", vars),
                                       
-                                      plotOutput("histRevenue", height = 200),
-                                      plotOutput("scatterAppreciationYear", height = 250)
+                                      plotOutput("histRevenue", height = 250),
+                                      plotOutput("scatterAppreciationYear", height = 350)
                         ),
                         
                         tags$div(id="cite",
@@ -64,11 +61,11 @@ navbarPage("Revenue Map", id="nav",
                       )
                     ),
                     fluidRow(
-                      column(1,
-                             numericInput("minScore", "Min score", min=0, max=100, value=0)
+                      column(2,
+                             numericInput("minPrice", "Min price", min=0, max=5000000, value=1)
                       ),
-                      column(1,
-                             numericInput("maxScore", "Max score", min=0, max=100, value=100)
+                      column(2,
+                             numericInput("maxPrice", "Max price", min=0, max=5000000, value=5000000)
                       )
                     ),
                     hr(),

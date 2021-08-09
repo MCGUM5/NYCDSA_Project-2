@@ -3,10 +3,11 @@ library(RColorBrewer)
 library(scales)
 library(lattice)
 library(dplyr)
+library(lubridate)
 
 # Leaflet bindings are a bit slow; for now we'll just sample to compensate
 set.seed(100)
-zipdata <- allzips[sample.int(nrow(allzips), 10000),]
+zipdata <- allzips[sample.int(nrow(allzips), 1657),]
 # By ordering by centile, we ensure that the (comparatively rare) SuperZIPs
 # will be drawn last and thus be easier to see
 zipdata <- zipdata[order(zipdata$revenue),]
@@ -58,7 +59,8 @@ function(input, output, session) {
     if (nrow(zipsInBounds()) == 0)
       return(NULL)
     
-    print(xyplot(appreciation ~ year, data = zipsInBounds(), xlim = range(allzips$year), ylim = range(allzips$appreciation)))
+    print(xyplot(rent ~ price, data = zipsInBounds(), xlab = 'Price (USD)', ylab = 'Rent (USD)', 
+                 xlim = range(allzips$price), ylim = range(allzips$rent)))
   })
   
   # This observer is responsible for maintaining the circles and legend,
@@ -93,13 +95,13 @@ function(input, output, session) {
   showZipcodePopup <- function(zipcode, lat, lng) {
     selectedZip <- allzips[allzips$zipcode == zipcode,]
     content <- as.character(tagList(
-      tags$h4("Profit Ratio:", as.integer(selectedZip$revenue)),
+      tags$h4("Profit Ratio:", as.numeric(selectedZip$revenue)),
       tags$strong(HTML(sprintf("%s, %s %s",
-                               selectedZip$city.x, selectedZip$state.x, selectedZip$zipcode
+                               selectedZip$city, selectedZip$state, selectedZip$zipcode
       ))), tags$br(),
       sprintf("Household price: %s", dollar(selectedZip$price)), tags$br(),
       sprintf("Yr/yr appreciation: %s%%", as.numeric(selectedZip$appreciation)), tags$br(),
-      sprintf("Household rent: %s", dollar(selectedZip$rent)), tags$br()
+      sprintf("Household rent: %s", dollar(selectedZip$rent)), tags
     ))
     leafletProxy("map") %>% addPopups(lng, lat, content, layerId = zipcode)
   }
@@ -163,8 +165,8 @@ function(input, output, session) {
   output$ziptable <- DT::renderDataTable({
     df <- cleantable %>%
       filter(
-        Score >= input$minScore,
-        Score <= input$maxScore,
+        Price >= input$minPrice,
+        Price <= input$maxPrice,
         is.null(input$states) | State %in% input$states,
         is.null(input$cities) | City %in% input$cities,
         is.null(input$zipcodes) | Zipcode %in% input$zipcodes
