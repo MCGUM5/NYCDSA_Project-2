@@ -1,6 +1,9 @@
 
 library(dplyr)
 library(lubridate)
+# Important: Unload package 'MASS' for proper use of select function.
+
+
 
 allzips <- readRDS("data/superzip.rds")
 Homes_all <- read_csv("./data/Homes_all.csv")
@@ -14,6 +17,7 @@ row.names(allzips) <- allzips$zipcode
 allzips <- inner_join(allzips, Homes_2022, by = c('zipcode'), copy = FALSE)
 allzips <- allzips %>% mutate(none = 1+ price*0)
 
+# Make sure MASS package is unloaded for the select function
 cleantable <- allzips %>%
   select(
     City = city,
