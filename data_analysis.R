@@ -215,11 +215,12 @@ lambda_trim
 Re-run linear regression on trimmed dataset.
 ```{r}
 model_trim <- lm(((rent^(lambda_trim)-1)/lambda_trim) ~ price, data = house_trim)
-summary(model_bc)
+summary(model_trim)
 ```
 
 Plot the linear regression to check assumptions
 ```{r}
+
 plot(model_trim)
 ```
 
@@ -277,22 +278,38 @@ Homes_all <- Homes_all %>% mutate(price_yr = case_when(year == 2022 ~ (lag(price
                                                   year != 2022 ~ price_year))
 # Originally used previous linear regression to calculate predicted rent for 2022 but values looked too far off
 # Assume rent for 2022 did not change from previous year (conservative estimate of revenue)
-Homes_all <- Homes_all %>% mutate(rent_yr = case_when(year == 2022 ~ lag(rent_year), 
-                                                      year != 2022 ~ rent_year))
+Homes_all <- Homes_all %>% mutate(rent_yr = case_when(year == 2022 ~ 12*lag(rent_year), 
+                                                      year != 2022 ~ 12*rent_year))
 # Recalculate rev_yr = (appreciation($) + rent) / price
-Homes_all <- Homes_all %>% mutate(rev_yr = ((apprec_year/100)*price_yr+rent_yr))
+Homes_all <- Homes_all %>% mutate(rev_yr = ((apprec_year/100)*price_yr+rent_yr)/price_yr)
 # Remove old columns that have been mutated
 Homes_all <- Homes_all %>% select_('zipcode', 'year', 'state', 
                                    'county', 'city', appreciation = 'apprec_year', 
                                    price = 'price_yr', rent = 'rent_yr', revenue = 'rev_yr') %>% group_by(zipcode)
+Homes_all <- Homes_all %>% arrange(desc(revenue), .by_group = TRUE)
 Homes_all
+
 ```
 
+Find the top zipcodes by revenue for 2022:
+```{r}
+Homes_2022 <- Homes_all %>% filter(year == 2022) %>% arrange(desc(revenue))
+Homes_2022
+```
+
+Take a closer look at the final data
+```{r}
+ggplot(data = Homes_2022, aes(x = state, y = revenue)) + geom_boxplot()
+ggplot(data = Homes_2022, aes(x = appreciation, y = revenue)) + geom_point()
+ggplot(data = Homes_2022, aes(x = price, y = rent)) + geom_point()
+ggplot(data = Homes_all %>% filter(zipcode == '63136'), aes(x = year, y = revenue)) + geom_point()
+```
 
 
 Write the dataframe to a csv file for the Shiny app. 
 ```{r}
 write.csv(Homes_all, "./data/Homes_all.csv", row.names = TRUE)
+write.csv(Homes_2022, "./data/Homes_2022.csv", row.names = TRUE)
 ```
 
 
