@@ -21,7 +21,7 @@ function(input, output, session) {
       addTiles() %>%
       setView(lng = -93.85, lat = 37.45, zoom = 4)
   })
-  
+   
   # A reactive expression that returns the set of zips that are
   # in bounds right now
   zipsInBounds <- reactive({

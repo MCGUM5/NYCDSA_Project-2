@@ -12,4 +12,4 @@ $(document).on("click", ".go-map", function(e) {
     zip: zip,
     nonce: Math.random()
   });
-});
+}); 

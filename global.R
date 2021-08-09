@@ -21,4 +21,4 @@ cleantable <- allzips %>%
     Income = income,
     Lat = latitude,
     Long = longitude
-  )
+  ) 

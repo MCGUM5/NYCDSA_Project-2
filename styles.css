@@ -11,7 +11,7 @@ div.outer {
   overflow: hidden;
   padding: 0;
 }
-
+ 
 /* Customize fonts */
   body, label, input, button, select { 
     font-family: 'Helvetica Neue', Helvetica;
